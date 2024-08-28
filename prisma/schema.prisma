@@ -8,10 +8,56 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum Role {
+  admin
+  user
+}
+
+enum SubscriptionType {
+  basic
+  premium
+  free
+}
+
+enum SubscriptionStatus {
+  active
+  expired
+  unsubscribed
+}
+
 model Tenant {
-  id        String   @id @default(cuid())
-  name      String
-  subdomain String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String         @id @default(uuid())
+  name          String
+  subdomain     String         @unique
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  User          User[]
+  subscriptions Subscription[]
+}
+
+model User {
+  id            String    @id @default(uuid())
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
+  password      String
+  role          Role      @default(user)
+  active        Boolean   @default(false)
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  tenantId      String    @default(dbgenerated("(current_setting('app.current_tenant_id'::text))::text")) @map("tenant_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+}
+
+model Subscription {
+  id        String             @id @default(uuid())
+  tenant    Tenant             @relation(fields: [tenantId], references: [id])
+  tenantId  String             @default(dbgenerated("(current_setting('app.current_tenant_id'::text))::text")) @map("tenant_id")
+  type      SubscriptionType   @default(free) // e.g., "basic", "premium"
+  startDate DateTime           @default(now()) @map("start_date")
+  endDate   DateTime           @map("end_date")
+  status    SubscriptionStatus @default(unsubscribed) // e.g., "active", "expired"
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
 }
